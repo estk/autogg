@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
-require 'rb-inotify'
+#require 'rb-inotify' only when --watch is passed
+
 
 FLACD = '/media/tb/rt/wt/'
 OGGD  = '/media/tb/ogg/'
@@ -26,10 +27,11 @@ oggpath. Lastly, use absolute paths"
 
 class BadArgvs < StandardError; end
 
-begin
+def setup
   case ARGV[0]
   when '--help'; raise BadArgvs
   when '--watch'
+    require 'rb-inotify'
     @watchflag = true
     ARGV[1..-1].each do |e| @args << e end
   end
@@ -105,19 +107,21 @@ def ignored?( file )
   IGNORE.find { |i| file == i }
 end
 
-#begin the conversions
-oggencdir('')
-Process.waitall
+if __FILE__ == $0
+  setup
+  oggencdir ''
+  Process.waitall
 
-if @watchflag
-  # wait for changes via inotify
-  notifier = INotify::Notifier.new
+  if @watchflag
+    # wait for changes via inotify
+    notifier = INotify::Notifier.new
 
-  notifier.watch( FLACD, :create ) do |e|
-    puts e.name + " was modified, rescaning..."
-    oggencdir( '' )
-    Process.waitall
+    notifier.watch( FLACD, :create ) do |e|
+      puts e.name + " was modified, rescaning..."
+      oggencdir( '' )
+      Process.waitall
+    end
+
+    notifier.run
   end
-
-  notifier.run
 end
