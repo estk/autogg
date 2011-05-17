@@ -53,6 +53,7 @@ def setup
   end
 
   @oggargs << '-q8' unless @oggargs.find { |e| /-q\d/ }
+  puts "setup complete"
 
 rescue BadArgvs
   puts USAGE
@@ -65,11 +66,13 @@ def oggencdir( path )
     input  = @flacpath + path + f
     output = @oggpath  + path + f.gsub( /\.flac/, '.ogg' )
 
-    if ignored?( f ) or File.exists?( output )
+    if ignored?( f )
       next
 
     elsif File::directory?( input )
       dirhelper( path + f )
+
+    elsif File.exists?( output ) ; next
 
     elsif flac?( f )
       encfile( input, output ) if fork.nil?
@@ -112,7 +115,7 @@ if __FILE__ == $0
 
     notifier.watch( FLACD, :create ) do |e|
       puts e.name + " was modified, rescaning..."
-      oggencdir( '' )
+      oggencdir ''
       Process.waitall
     end
 
