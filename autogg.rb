@@ -60,6 +60,9 @@ rescue BadArgvs
   exit
 end
 
+
+#main mutural recursion loop-----------
+
 def oggencdir( path )
   Dir.new( @flacpath + path ).each do |f|
 
@@ -92,6 +95,8 @@ def dirhelper( path )
   end
 end
 
+#end mainloop-----------------------
+
 def encfile( input, output )
   exec %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
 end
@@ -104,6 +109,16 @@ def ignored?( file )
   IGNORE.find { |i| file == i }
 end
 
+def interupt
+ puts "\n" + "Shutting down, must complete encodes in current dir first though"
+ Process.waitall
+ exit
+end
+
+trap "INT" do
+ interupt
+end
+
 if __FILE__ == $0
   setup
   oggencdir ''
@@ -113,12 +128,13 @@ if __FILE__ == $0
     # wait for changes via inotify
     notifier = INotify::Notifier.new
 
-    notifier.watch( FLACD, :create ) do |e|
+    notifier.watch( @flacpath, :create ) do |e|
       puts e.name + " was modified, rescaning..."
       oggencdir ''
       Process.waitall
     end
 
+    puts "watching #{@flacpath}"
     notifier.run
   end
 end
