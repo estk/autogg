@@ -34,36 +34,30 @@ def setup
     require 'rb-inotify'
     @watchflag = true
     ARGV[1..-1].each do |e| @args << e end
+  else
+    @args = ARGV
   end
 
-  @args = ARGV unless @watchflag
-
   if @args.empty?
-      @flacpath = FLACD
-      @oggpath  = OGGD
-
-  elsif @args.length == 1
-      raise BadArgvs
+      @flacpath, @oggpath = FLACD, OGGD
 
   elsif @args.length == 2
-      @flacpath = @args[0]
-      @oggpath  = @args[1]
+      @flacpath, @oggpath = @args[0], @args[1]
 
   elsif @args[2] == '--opts'
-      @flacpath = @args[0]
-      @oggpath  = @args[1]
+      @flacpath, @oggpath = @args[0], @args[1]
       @oggargs  = @args[3..-1]
 
   else
       raise BadArgvs
   end
 
+  @oggargs << '-q8' unless @oggargs.find { |e| /-q\d/ }
+
 rescue BadArgvs
   puts USAGE
   exit
 end
-
-@oggargs << '-q8' unless @oggargs.find { |e| /-q\d/ }
 
 def oggencdir( path )
   Dir.new( @flacpath + path ).each do |f|
