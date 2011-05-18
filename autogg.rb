@@ -9,6 +9,7 @@ require 'optparse'
 require 'find'
 #require 'rb-inotify' only when --watch is passed
 
+# Comandline argument parsing function ---- DONE
 
 def parseargs
   options = {}
@@ -55,11 +56,10 @@ def parseargs
   @watchflag = options[:watch]
 end
 
-# directory traversal ------
-
-@ps_hash = {}
+# directory traversal ------ DONE
 
 def oggencdir
+  @ps_hash = SizedPsHash(4)
   Find.find( @flacpath ) do |path|
     if FileTest.directory?( path )
       Find.prune if File.basename(path)[0] == ?.
@@ -81,24 +81,25 @@ class File
 end
 
 class SizedPsHash < Hash
-  ## Takes pids as keys and files the process
-  ## is operating on as values.
-  ## Waits until size less than @max to add a new process
+  ## Takes pids as keys and the path to the
+  ## files the process is operating on as values.
+  ## Waits until size less than @max to add a new process.
   ## Automatically removes completed processes.
+
   def self.initialize(max)
     @max = max
     super
   end
 
   def []=
-    until self.size < @max
+    until self.size < @max # is this the best way to wait?
       self.clean
     end
     super
   end
 
   def clean
-    self.each do |k, v|
+    self.each do |pid, path|
       ##remove completed processes
     end
   end
@@ -109,21 +110,24 @@ end
 def encfile( input )
   output = input.gsub( @flacpath, @oggpath )
   t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"} ## is spawn the best way?
-  ##add t(hread) to process hash
-end
-
-def clean!( ps_hash )
-  ps_hash.each do |k, v|
-
-  end
+  @ps_hash[t] = output
 end
 
 def interupt
+  ##UNTESTED
   puts "\n" + "Shutting down and removing partially encoded files in #{@cwd}"
-  ## remove files of ps's with exit code 130
+  @ps_hash.each do |pid, path|
+    begin
+      npid, status = Process.wait2( pid )
+      #File.delete( path ) if status.exitstatus == 130 ##if it was killed by ^C
+    rescue Errno::ECHILD
+      File.delete( path ) unless status.exitstatus == 0
+    end
+  end
 end
 
 def watcher
+  ##INCOMPLETE
   ## needs separate interupt signal handling
   notifier = INotify::Notifier.new
   notifier.watch( @flacpath, :create ) do |e|
@@ -147,6 +151,7 @@ if __FILE__ == $0
 end
 
 ## TODO
-# 1. finish implementing process queue
-# 2. a progress bar would be nice
-# 3. any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
+# 1. finish SizedPsHash
+# 2. test interupt
+# 3. a progress bar would be nice (not to mention control over IO)
+# 4. any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
