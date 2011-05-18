@@ -58,7 +58,7 @@ end
 
 # directory traversal ------
 
-ps_hash = {}
+@ps_hash = {}
 
 def oggencdir
   Find.find( @flacpath ) do |path|
@@ -81,11 +81,42 @@ class File
   end
 end
 
+class SizedPsHash < Hash
+  ## Takes pids as keys and files the process
+  ## is operating on as values.
+  ## Waits until size less than @max.
+  ## Automatically removes completed processes.
+  def self.initialize(max)
+    @max = max
+    super
+  end
+
+  def []=
+    until self.size < @max
+      self.clean
+    end
+    super
+  end
+
+  def clean
+    self.each do |k, v|
+      ##remove completed processes
+    end
+  end
+
+end
+
 
 def encfile( input )
   output = input.gsub( @flacpath, @oggpath )
-  t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
+  t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"} ## is spawn the best way?
   ##add t(hread) to process hash
+end
+
+def clean!( ps_hash )
+  ps_hash.each do |k, v|
+
+  end
 end
 
 def interupt
@@ -115,3 +146,8 @@ if __FILE__ == $0
   parseargs ; oggencdir ; Process.waitall
   watcher if @watchflag
 end
+
+## TODO
+# 1. finish implementing process queue
+# 2. a progress bar would be nice
+# 3. any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
