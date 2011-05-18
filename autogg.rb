@@ -11,7 +11,7 @@ IGNORE = [ '.', '..' ]
 # takes two dirs, and an optional n arguments to oggenc.
 
 def parseargs
-  options = []
+  options = {}
   dirinfo = "Please use absolute paths"
 
   op = OptionParser.new do |opts|
@@ -48,6 +48,8 @@ def parseargs
   else
     @oggargs = []
   end
+
+  @watchflag = options[:watch]
 end
 
 #main mutural recursion loop-----------
@@ -102,9 +104,7 @@ def ignored?( file )
 end
 
 def interupt
- puts "\n" + "Shutting down, must complete encodes in current dir first though"
- Process.waitall
- exit
+  puts "\n" + "Shutting down and removing partially encoded files in #{@cwd}"
 end
 
 # end helpers ------------------
@@ -116,9 +116,10 @@ end
 if __FILE__ == $0
   parseargs
   oggencdir ''
+
   Process.waitall
 
-  if options[:watch]
+  if @watchflag
     # wait for changes via inotify
     notifier = INotify::Notifier.new
 
