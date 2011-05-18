@@ -8,7 +8,6 @@
 require 'optparse'
 require 'find'
 #require 'rb-inotify' only when --watch is passed
-#require 'thread'
 
 
 def parseargs
@@ -84,7 +83,7 @@ end
 class SizedPsHash < Hash
   ## Takes pids as keys and files the process
   ## is operating on as values.
-  ## Waits until size less than @max.
+  ## Waits until size less than @max to add a new process
   ## Automatically removes completed processes.
   def self.initialize(max)
     @max = max
