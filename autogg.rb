@@ -1,65 +1,54 @@
 #!/usr/bin/env ruby
 
 #require 'rb-inotify' only when --watch is passed
+require 'optparse'
 
 
-FLACD = '/media/tb/rt/wt/'
-OGGD  = '/media/tb/ogg/'
 IGNORE = [ '.', '..' ]
-USAGE = "usage: ~$ ./autogg.rb [--watch] [flacpath oggpath] " +
-        "[--opts n oggenc args] \n" +
-        "uses -q8 by default, --help prints this message \n" +
-
-"flacpath and oggpath are optional, though if you define one, \
-you need to define the other. And if you don't define them, \
-make sure to edit this script to reflect your flacpath and \
-oggpath. Lastly, use absolute paths"
 
 # encodes all flacs in flacdir to ogg (recursively) while
 # preserving directory structure, and outputing to oggdir.
 # takes two dirs, and an optional n arguments to oggenc.
 
-@watchflag = false
-@readyflag = false
-@oggargs = []
-@args = []
+def parseargs
+  options = []
+  dirinfo = "Please use absolute paths"
 
+  op = OptionParser.new do |opts|
+    opts.banner = "Usage: autogg.rb [options] flacpath oggpath [ -o oggenc args ... ]"
 
-class BadArgvs < StandardError; end
+    options[:watch] = false
+    opts.on( '-w', '--watch', 
+            "Watch flacpath for changes, then rescan " +
+            "and encode if any files are created within" ) do
+      options[:watch] = true
+    end
 
-def setup
-  case ARGV[0]
-  when '--help'; raise BadArgvs
-  when '--watch'
-    require 'rb-inotify'
-    @watchflag = true
-    ARGV[1..-1].each do |e| @args << e end
+    options[:oggargs] = false
+    opts.on( '-o', '--oggenc-args', 
+             "Specify arguments to me be passed " +
+             "through to each oggenc" ) do
+      options[:oggargs] = true
+    end
+
+    opts.on( '-h', '--watch', 'Display this screen' ) do
+      puts opts
+      puts dirinfo
+    end
+  end.parse!
+
+  if ( ARGV[0..1].all? { |a| a =~ /\/.*\// } )
+    @flacpath, @oggpath = ARGV[0..1]
   else
-    @args = ARGV
+    puts dirinfo
   end
 
-  if @args.empty?
-      @flacpath, @oggpath = FLACD, OGGD
-
-  elsif @args.length == 2
-      @flacpath, @oggpath = @args[0], @args[1]
-
-  elsif @args[2] == '--opts'
-      @flacpath, @oggpath = @args[0], @args[1]
-      @oggargs  = @args[3..-1]
-
+  if options[:oggargs]
+    @oggargs = ARGV[2..-1]
   else
-      raise BadArgvs
+    @oggargs = []
   end
-
-  @oggargs << '-q8' unless @oggargs.find { |e| /-q\d/ }
-  puts "setup complete"
-
-rescue BadArgvs
-  puts USAGE
-  exit
 end
-
 
 #main mutural recursion loop-----------
 
@@ -120,11 +109,11 @@ trap "INT" do
 end
 
 if __FILE__ == $0
-  setup
+  parseargs
   oggencdir ''
   Process.waitall
 
-  if @watchflag
+  if options[:watch]
     # wait for changes via inotify
     notifier = INotify::Notifier.new
 
