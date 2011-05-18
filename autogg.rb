@@ -30,16 +30,19 @@ def parseargs
       options[:oggargs] = true
     end
 
-    opts.on( '-h', '--watch', 'Display this screen' ) do
+    opts.on( '-h', '--help', 'Display this screen' ) do
       puts opts
       puts dirinfo
     end
-  end.parse!
+  end
 
-  if ( ARGV[0..1].all? { |a| a =~ /\/.*\// } )
+  op.parse!
+
+  if ( ARGV.length >= 2 ) and ( ARGV[0..1].all? { |a| a =~ /\/.*\// } )
     @flacpath, @oggpath = ARGV[0..1]
   else
-    puts dirinfo
+    puts op
+    exit
   end
 
   if options[:oggargs]
@@ -63,10 +66,10 @@ end
 
 # find refactorization --------
 
-thread_hash = {}
+ps_hash = {}
 
 def oggencdir
-  Find.find(ENV["HOME"]) do |path|
+  Find.find( @flacpath ) do |path|
     if FileTest.directory?( path )
       Find.prune if File.basename(path)[0] == ?.
     elsif File.flac?( path )
@@ -80,13 +83,29 @@ end
 
 def encfile( input )
   output = input.gsub( @flacpath, @oggpath )
-  exec %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
+  t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
+  ps_hash[t] = output
 end
 
 def interupt
   puts "\n" + "Shutting down and removing partially encoded files in #{@cwd}"
+  ## remove files of ps's with exit code 130
 end
 
+# wait for changes via inotify
+
+def watcher
+  notifier = INotify::Notifier.new
+  notifier.watch( @flacpath, :create ) do |e|
+    puts e.name + " was modified, rescaning..."
+    oggencdir
+    Process.waitall
+    watcher
+  end
+
+  puts "watching #{@flacpath}"
+  notifier.run
+end
 # end helpers ------------------
 
 trap "INT" do
@@ -95,21 +114,7 @@ end
 
 if __FILE__ == $0
   parseargs
-  oggencdir ''
-
+  oggencdir
   Process.waitall
-
-  if @watchflag
-    # wait for changes via inotify
-    notifier = INotify::Notifier.new
-
-    notifier.watch( @flacpath, :create ) do |e|
-      puts e.name + " was modified, rescaning..."
-      oggencdir ''
-      Process.waitall
-    end
-
-    puts "watching #{@flacpath}"
-    notifier.run
-  end
+  watcher if @watchflag
 end
