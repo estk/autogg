@@ -2,9 +2,8 @@
 
 #require 'rb-inotify' only when --watch is passed
 require 'optparse'
-
-
-IGNORE = [ '.', '..' ]
+require 'find'
+#require 'thread'
 
 # encodes all flacs in flacdir to ogg (recursively) while
 # preserving directory structure, and outputing to oggdir.
@@ -52,55 +51,36 @@ def parseargs
   @watchflag = options[:watch]
 end
 
-#main mutural recursion loop-----------
+#yay monkeypatching
 
-def oggencdir( path )
-  Dir.new( @flacpath + path ).each do |f|
+class File
+  class << self
+    def flac?(path)
+      self.file?(path) and self.basename(path) =~ /\.flac/
+    end
+  end
+end
 
-    input  = @flacpath + path + f
-    output = @oggpath  + path + f.gsub( /\.flac/, '.ogg' )
+# find refactorization --------
 
-    if ignored?( f )
-      next
+thread_hash = {}
 
-    elsif File::directory?( input )
-      dirhelper( path + f )
-
-    elsif File.exists?( output ) ; next
-
-    elsif flac?( f )
-      encfile( input, output ) if fork.nil?
+def oggencdir
+  Find.find(ENV["HOME"]) do |path|
+    if FileTest.directory?( path )
+      Find.prune if File.basename(path)[0] == ?.
+    elsif File.flac?( path )
+      encfile( path )
     end
   end
 end
 
 
-def dirhelper( path )
-  Process.waitall
-
-  if File::directory?( @oggpath + path )
-    oggencdir( path + '/' )
-
-  else
-    Dir.mkdir( @oggpath + path )
-    oggencdir( path + '/' )
-  end
-end
-
-# end mainloop------------------
-
 # small helpers-----------------
 
-def encfile( input, output )
+def encfile( input )
+  output = input.gsub( @flacpath, @oggpath )
   exec %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
-end
-
-def flac?( file )
-  file =~ /\.flac/
-end
-
-def ignored?( file )
-  IGNORE.find { |i| file == i }
 end
 
 def interupt
