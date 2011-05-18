@@ -72,6 +72,7 @@ def oggencdir( path )
   end
 end
 
+
 def dirhelper( path )
   Process.waitall
 
@@ -84,7 +85,9 @@ def dirhelper( path )
   end
 end
 
-#end mainloop-----------------------
+# end mainloop------------------
+
+# small helpers-----------------
 
 def encfile( input, output )
   exec %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
@@ -103,6 +106,8 @@ def interupt
  Process.waitall
  exit
 end
+
+# end helpers ------------------
 
 trap "INT" do
  interupt
