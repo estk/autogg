@@ -1,13 +1,15 @@
 #!/usr/bin/env ruby
 
-#require 'rb-inotify' only when --watch is passed
-require 'optparse'
-require 'find'
-#require 'thread'
-
 # encodes all flacs in flacdir to ogg (recursively) while
 # preserving directory structure, and outputing to oggdir.
 # takes two dirs, and an optional n arguments to oggenc.
+
+
+require 'optparse'
+require 'find'
+#require 'rb-inotify' only when --watch is passed
+#require 'thread'
+
 
 def parseargs
   options = {}
@@ -54,17 +56,7 @@ def parseargs
   @watchflag = options[:watch]
 end
 
-#yay monkeypatching
-
-class File
-  class << self
-    def flac?(path)
-      self.file?(path) and self.basename(path) =~ /\.flac/
-    end
-  end
-end
-
-# find refactorization --------
+# directory traversal ------
 
 ps_hash = {}
 
@@ -79,12 +71,21 @@ def oggencdir
 end
 
 
-# small helpers-----------------
+# utilities -----------------
+
+class File
+  class << self
+    def flac?(path)
+      self.file?(path) and self.basename(path) =~ /\.flac/
+    end
+  end
+end
+
 
 def encfile( input )
   output = input.gsub( @flacpath, @oggpath )
   t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"}
-  ps_hash[t] = output
+  ##add t(hread) to process hash
 end
 
 def interupt
@@ -92,29 +93,25 @@ def interupt
   ## remove files of ps's with exit code 130
 end
 
-# wait for changes via inotify
-
 def watcher
+  ## needs separate interupt signal handling
   notifier = INotify::Notifier.new
   notifier.watch( @flacpath, :create ) do |e|
     puts e.name + " was modified, rescaning..."
-    oggencdir
-    Process.waitall
-    watcher
+    oggencdir ; Process.waitall ; watcher
   end
 
   puts "watching #{@flacpath}"
   notifier.run
 end
-# end helpers ------------------
+
+# run the code -------------
 
 trap "INT" do
  interupt
 end
 
 if __FILE__ == $0
-  parseargs
-  oggencdir
-  Process.waitall
+  parseargs ; oggencdir ; Process.waitall
   watcher if @watchflag
 end
