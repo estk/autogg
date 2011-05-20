@@ -9,7 +9,7 @@ require 'optparse'
 require 'find'
 #require 'rb-inotify' only when --watch is passed
 
-# Comandline argument parsing function ---- DONE
+# Comandline argument parsing function ----
 
 def parseargs
   options = {}
@@ -25,7 +25,7 @@ def parseargs
       options[:watch] = true
     end
 
-    options[:oggargs] = false
+    options[:oggargs] = nil
     opts.on( '-o', '--oggenc-args', 
              "Specify arguments to me be passed " +
              "through to each oggenc" ) do
@@ -40,8 +40,6 @@ def parseargs
 
   op.parse!
 
-  @watchflag = options[:watch]
-
   if ( ARGV.length >= 2 ) and ( ARGV[0..1].all? { |a| a =~ /\/.*\// } )
     @flacpath, @oggpath = ARGV[0..1]
   else
@@ -49,7 +47,7 @@ def parseargs
     exit
   end
 
-  if options[:oggargs]
+  if options[:oggargs]       ## maybe there is a beter way to parse oggargs?
     @oggargs = ARGV[2..-1]
   else
     @oggargs = []
@@ -81,9 +79,9 @@ class File
 end
 
 class SizedPsHash < Hash
-  ## Takes pids as keys and the path to the
-  ## files the process is operating on as values.
-  ## Waits until size less than @max to add a new process.
+  ## Takes pids as keys and paths to the
+  ## corresponding files the ps is encoding as values.
+  ## Blocks until (its hash) size less than @max to add a new process.
   ## Automatically removes completed processes.
 
   def self.initialize(max)
@@ -136,7 +134,7 @@ end
 
 if __FILE__ == $0
   parseargs ; oggencdir ; Process.waitall
-  watcher if @watchflag
+  watcher if options[:watch]
 end
 
 ## TODO
