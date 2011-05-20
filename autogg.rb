@@ -40,6 +40,8 @@ def parseargs
 
   op.parse!
 
+  @watchflag = options[:watch]
+
   if ( ARGV.length >= 2 ) and ( ARGV[0..1].all? { |a| a =~ /\/.*\// } )
     @flacpath, @oggpath = ARGV[0..1]
   else
@@ -52,17 +54,15 @@ def parseargs
   else
     @oggargs = []
   end
-
-  @watchflag = options[:watch]
 end
 
 # directory traversal ------ DONE
 
 def oggencdir
-  @ps_hash = SizedPsHash(4)
+  @ps_hash = SizedPsHash.new(4)
   Find.find( @flacpath ) do |path|
     if FileTest.directory?( path )
-      Find.prune if File.basename(path)[0] == ?.
+      Find.prune if File.basename( path )[0] == ?.
     elsif File.flac?( path )
       encfile( path )
     end
@@ -70,7 +70,7 @@ def oggencdir
 end
 
 
-# utilities -----------------
+# class definitions ----------------- DONE
 
 class File
   class << self
@@ -91,38 +91,27 @@ class SizedPsHash < Hash
     super
   end
 
-  def []=
-    until self.size < @max # is this the best way to wait?
-      self.clean
+  def []=( pid, path )
+    while self.size >= @max
+      pid = Process.wait
+      self.remove( pid )
     end
-    super
+    super( pid, path )
   end
-
-  def clean
-    self.each do |pid, path|
-      ##remove completed processes
-    end
-  end
-
 end
 
+# utilities -----------------
 
-def encfile( input )
-  output = input.gsub( @flacpath, @oggpath )
-  t = spawn %Q{oggenc #{@oggargs.join} "#{input}" -o "#{output}"} ## is spawn the best way?
-  @ps_hash[t] = output
+def encfile( indir )
+  outdir = indir.gsub( @flacpath, @oggpath )
+  ps = IO.popen %Q{oggenc #{@oggargs.join} "#{indir}" -o "#{outdir}"}
+  @ps_hash[ps.pid] = outdir
 end
 
 def interupt
-  ##UNTESTED
   puts "\n" + "Shutting down and removing partially encoded files in #{@cwd}"
   @ps_hash.each do |pid, path|
-    begin
-      npid, status = Process.wait2( pid )
-      #File.delete( path ) if status.exitstatus == 130 ##if it was killed by ^C
-    rescue Errno::ECHILD
-      File.delete( path ) unless status.exitstatus == 0
-    end
+    File.delete( path )
   end
 end
 
@@ -153,5 +142,6 @@ end
 ## TODO
 # 1. finish SizedPsHash
 # 2. test interupt
-# 3. a progress bar would be nice (not to mention control over IO)
-# 4. any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
+# - make -o option accept an array
+# - a progress bar would be nice (not to mention control over IO)
+# - any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
