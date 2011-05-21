@@ -2,15 +2,12 @@
 
 # encodes all flacs in flacdir to ogg (recursively) while
 # preserving directory structure, and outputing to oggdir.
-# takes two dirs, and an optional n arguments to oggenc.
 
-
+#require 'rb-inotify' only when --watch is passed
 require 'optparse'
 require 'ostruct'
 require 'find'
-#require 'rb-inotify' only when --watch is passed
 
-# Comandline argument parsing function ----
 class Parser
   def self.parse(args)
 
@@ -61,8 +58,6 @@ class Parser
   end
 end
 
-# class definitions -----------------
-
 class Flac < File
   def self.exists?( path )
     file?( path ) and basename( path ) =~ /\.flac/
@@ -76,12 +71,6 @@ class Ogg < File
 end
 
 class SizedPsHash < Hash
-  ## Takes anything (nil) as keys and paths to the
-  ## corresponding files the ps is encoding as values.
-  ## It also takes a block, and runs the block when there is room.
-  ## From the block it extracts the pid, and assignes that as the key.
-  ## Blocks until (its hash) size less than @max to add a new process.
-  ## Automatically removes completed processes.
 
   def initialize( max )
     @max = max
@@ -132,14 +121,14 @@ class OggEncoder
     end
 
     def watcher
-      ##INCOMPLETE
-      ## needs separate interupt signal handling
+      require 'rb-inotify'
       notifier = INotify::Notifier.new
-      notifier.watch( @flacpath, :create ) do |e|
-        puts e.name + " was modified, rescaning..."
+      notifier.watch( @paths.flac, :create ) do |e|
+        puts %Q{#{Time.now.ctime}:  #{e.name} was modified, rescaning...}
         oggencdir ; Process.waitall
+        puts "watching #{@paths.flac}"
       end
-      puts "watching #{@flacpath}"
+      puts "watching #{@paths.flac}"
       notifier.run
     end
 
@@ -162,8 +151,3 @@ if __FILE__ == $0
   options = Parser.parse( ARGV )
   OggEncoder.encode( options )
 end
-
-## TODO
-# 1 quiet the output of oggenc(s)
-# - a progress bar would be nice
-# - any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
