@@ -15,7 +15,6 @@ class Parser
   def self.parse(args)
 
     script_name = File.basename( $0 )
-    dirinfo = "Please use absolute paths"
     options = OpenStruct.new
     options.watch = false
     options.max_procs = 4
@@ -23,7 +22,8 @@ class Parser
 
     op = OptionParser.new do |opts|
       opts.banner = "Usage: autogg.rb [options] flacpath oggpath [ -o oggenc args ... ]\n" +
-                    "Example: #{script_name} ~/music/flac/ ~music/ogg/ --watch --oggenc-args BLAH"
+                    "Example: #{script_name} ~/music/flac/ ~/music/ogg/ --watch --oggenc-args -q8\n" +
+                    "    Ex2: #{script_name} ~/music/flac/ ~/music/ogg/ -o -q8,-Q,--utf8"
 
       opts.on( '-w', '--watch',
               "Watch flacpath for changes, then rescan " +
@@ -32,20 +32,20 @@ class Parser
       end
 
       opts.on( '-m', '--max-processes n', "Maximum number of encoding processes running at once" ) do |n|
-        options.max_procs = n.to_i if n
+        options.max_procs = n.to_i
       end
 
       opts.on( '-o', '--oggenc-args arglist', Array,
                "Specify arguments to me be passed through to oggenc" ) do |ary|
-        options.oggargs = ary unless ary.empty?
+        options.oggargs = ary
       end
 
       opts.on( '-h', '--help', 'Display this screen' ) do
         puts opts
         puts dirinfo
+        exit
       end
     end
-
     op.parse!
 
     if ( ARGV.length == 2 ) and ARGV.all? { |a| File.directory?( a )}
@@ -61,7 +61,7 @@ class Parser
   end
 end
 
-# class definitions ----------------- DONE
+# class definitions -----------------
 
 class Flac < File
   def self.exists?( path )
@@ -76,8 +76,10 @@ class Ogg < File
 end
 
 class SizedPsHash < Hash
-  ## Takes pids as keys and paths to the
+  ## Takes anything (nil) as keys and paths to the
   ## corresponding files the ps is encoding as values.
+  ## It also takes a block, and runs the block when there is room.
+  ## From the block it extracts the pid, and assignes that as the key.
   ## Blocks until (its hash) size less than @max to add a new process.
   ## Automatically removes completed processes.
 
@@ -86,13 +88,13 @@ class SizedPsHash < Hash
     super
   end
 
-  def []=( pid, path )
-    puts self
+  def store( pid, path, &block )
     while size >= @max
       pid = Process.wait
       delete( pid )
     end
-    super( pid, path )
+    ps = block.call
+    super( ps.pid, path )
   end
 end
 
@@ -101,7 +103,6 @@ class OggEncoder
 
     def oggencdir
       Find.find( @paths.flac ) do |path|
-        puts "checking #{path}"
         if FileTest.directory?( path )
           Find.prune if File.basename( path )[0] == ?.
         elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
@@ -112,8 +113,9 @@ class OggEncoder
 
     def encfile( inpath )
       outpath = getoutpath( inpath )
-      ps = IO.popen %Q{oggenc #{@oggargs.join} "#{inpath}" -o "#{outpath}"}
-      @ps_hash[ps.pid] = outpath
+      @ps_hash.store( nil, outpath ) do
+        IO.popen %Q{oggenc #{@oggargs.join} "#{inpath}" -o "#{outpath}"}
+      end
     end
 
     def getoutpath( inpath )
@@ -162,6 +164,6 @@ if __FILE__ == $0
 end
 
 ## TODO
-# 1. test
+# 1 quiet the output of oggenc(s)
 # - a progress bar would be nice
 # - any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
