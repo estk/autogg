@@ -4,6 +4,8 @@
 # preserving directory structure, and outputing to oggdir.
 
 #require 'rb-inotify' only when --watch is passed
+$:<< ENV['HOME']
+require 'prog/ruby/autogg/lib/autogg/progressbar.rb'
 require 'optparse'
 require 'ostruct'
 require 'find'
@@ -15,7 +17,7 @@ class Parser
     options = OpenStruct.new
     options.watch = false
     options.max_procs = 4
-    options.oggargs = []
+    options.oggargs = ['-Q']
 
     op = OptionParser.new do |opts|
       opts.banner = "Usage: autogg.rb [options] flacpath oggpath [ -o oggenc args ... ]\n" +
@@ -34,7 +36,8 @@ class Parser
 
       opts.on( '-o', '--oggenc-args arglist', Array,
                "Specify arguments to me be passed through to oggenc" ) do |ary|
-        options.oggargs = ary
+        options.oggargs << ary
+        options.oggargs.flatten!
       end
 
       opts.on( '-h', '--help', 'Display this screen' ) do
@@ -90,10 +93,25 @@ end
 class OggEncoder
   class << self
 
+    def encode( options )
+      @options = options
+      @paths = options.paths
+      @oggargs = options.oggargs
+      @ps_hash = SizedPsHash.new( options.max_procs )
+      @pbar = ProgressBar.new( "Subdirectory progress", num_of_folders ) #assumes all dirs have same flac density
+      oggencdir ; Process.waitall
+      puts @pbar.finish
+      watcher if options.watch
+    end
+
     def oggencdir
       Find.find( @paths.flac ) do |path|
         if FileTest.directory?( path )
-          Find.prune if File.basename( path )[0] == ?.
+          if File.basename( path )[0] == ?.
+            File.prune
+          elsif
+            @pbar.inc
+          end
         elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
           encfile( path )
         end
@@ -112,12 +130,11 @@ class OggEncoder
       outpath.gsub!( /\.flac/, '.ogg' )
     end
 
-    def interupt
-      puts "\n" + "Shutting down and removing partially encoded files"
-      @ps_hash.each do |pid, path|
-        File.delete( path )
-      end
-      exit
+    def num_of_folders
+      flac_entries = Dir.new( @paths.flac ).entries
+      dirs = flac_entries.find_all {|e| FileTest.directory?( e )  }
+      puts dirs.length
+      dirs.length
     end
 
     def watcher
@@ -132,13 +149,12 @@ class OggEncoder
       notifier.run
     end
 
-    def encode( options )
-      @options = options
-      @paths = options.paths
-      @oggargs = options.oggargs
-      @ps_hash = SizedPsHash.new( options.max_procs )
-      oggencdir ; Process.waitall
-      watcher if options.watch
+    def interupt
+      puts "\n" + "Shutting down and removing partially encoded files"
+      @ps_hash.each do |pid, path|
+        File.delete( path )
+      end
+      exit
     end
   end
 
