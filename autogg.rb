@@ -18,6 +18,7 @@ class Parser
     dirinfo = "Please use absolute paths"
     options = OpenStruct.new
     options.watch = false
+    options.max_procs = 4
     options.oggargs = []
 
     op = OptionParser.new do |opts|
@@ -31,12 +32,12 @@ class Parser
       end
 
       opts.on( '-m', '--max-processes n', "Maximum number of encoding processes running at once" ) do |n|
-        options.max_procs = n
+        options.max_procs = n.to_i if n
       end
 
       opts.on( '-o', '--oggenc-args arglist', Array,
                "Specify arguments to me be passed through to oggenc" ) do |ary|
-        options.oggargs = ary
+        options.oggargs = ary unless ary.empty?
       end
 
       opts.on( '-h', '--help', 'Display this screen' ) do
@@ -47,7 +48,7 @@ class Parser
 
     op.parse!
 
-    if ( ARGV.length = 2 ) and ARGV.all? { |a| File.directory?( a )}
+    if ( ARGV.length == 2 ) and ARGV.all? { |a| File.directory?( a )}
       paths = OpenStruct.new
       paths.flac = ARGV[0] ; paths.ogg = ARGV[1]
       options.paths = paths
@@ -63,8 +64,14 @@ end
 # class definitions ----------------- DONE
 
 class Flac < File
-  def self.exists?(path)
-    self.file?( path ) and self.basename( path ) =~ /\.flac/
+  def self.exists?( path )
+    file?( path ) and basename( path ) =~ /\.flac/
+  end
+end
+
+class Ogg < File
+  def self.exists?( path )
+    file?( path ) and basename( path ) =~ /\.ogg/
   end
 end
 
@@ -74,45 +81,52 @@ class SizedPsHash < Hash
   ## Blocks until (its hash) size less than @max to add a new process.
   ## Automatically removes completed processes.
 
-  def self.initialize( max )
+  def initialize( max )
     @max = max
     super
   end
 
   def []=( pid, path )
-    while self.size >= @max
+    puts self
+    while size >= @max
       pid = Process.wait
-      self.remove( pid )
+      delete( pid )
     end
     super( pid, path )
   end
 end
 
 class OggEncoder
-
   class << self
 
     def oggencdir
       Find.find( @paths.flac ) do |path|
+        puts "checking #{path}"
         if FileTest.directory?( path )
           Find.prune if File.basename( path )[0] == ?.
-        elsif Flac.exists?( path )
-          self.encfile( @paths, path )
+        elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
+          encfile( path )
         end
       end
     end
 
-    def encfile( indir )
-      outdir = indir.gsub( @paths.flac, @paths.ogg )
-      ps = IO.popen %Q{oggenc #{@oggargs.join} "#{indir}" -o "#{outdir}"}
-      @ps_hash[ps.pid] = outdir
+    def encfile( inpath )
+      outpath = getoutpath( inpath )
+      ps = IO.popen %Q{oggenc #{@oggargs.join} "#{inpath}" -o "#{outpath}"}
+      @ps_hash[ps.pid] = outpath
+    end
+
+    def getoutpath( inpath )
+      outpath = inpath.gsub( @paths.flac, @paths.ogg )
+      outpath.gsub!( /\.flac/, '.ogg' )
     end
 
     def interupt
-      puts "\n" + "Shutting down and removing partially encoded files in #{@cwd}"
+      puts "\n" + "Shutting down and removing partially encoded files"
       @ps_hash.each do |pid, path|
         File.delete( path )
       end
+      exit
     end
 
     def watcher
@@ -121,9 +135,8 @@ class OggEncoder
       notifier = INotify::Notifier.new
       notifier.watch( @flacpath, :create ) do |e|
         puts e.name + " was modified, rescaning..."
-        self.encode
+        oggencdir ; Process.waitall
       end
-
       puts "watching #{@flacpath}"
       notifier.run
     end
@@ -132,8 +145,8 @@ class OggEncoder
       @options = options
       @paths = options.paths
       @oggargs = options.oggargs
-      @ps_hash = SizedPsHash.new( option.max_procs )
-      self.oggencdir ; Process.waitall
+      @ps_hash = SizedPsHash.new( options.max_procs )
+      oggencdir ; Process.waitall
       watcher if options.watch
     end
   end
@@ -144,13 +157,11 @@ class OggEncoder
 end
 
 if __FILE__ == $0
-  options = Parser.parse
+  options = Parser.parse( ARGV )
   OggEncoder.encode( options )
 end
 
 ## TODO
-# 1. finish SizedPsHash
-# 2. test interupt
-# - make -o option accept an array
-# - a progress bar would be nice (not to mention control over IO)
+# 1. test
+# - a progress bar would be nice
 # - any chance of changing all dirs in oggpath from containing /\flac/i to /ogg/i ?
