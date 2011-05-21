@@ -71,10 +71,8 @@ end
 # class definitions ----------------- DONE
 
 class File
-  class << self
-    def flac?(path)
-      self.file?(path) and self.basename(path) =~ /\.flac/
-    end
+  def self.flac?(path)
+    self.file?(path) and self.basename(path) =~ /\.flac/
   end
 end
 
