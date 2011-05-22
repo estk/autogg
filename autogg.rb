@@ -4,6 +4,7 @@
 # preserving directory structure, and outputing to oggdir.
 
 #require 'rb-inotify' only when --watch is passed
+require_relative 'progressbar'
 require 'optparse'
 require 'ostruct'
 require 'find'
@@ -15,7 +16,7 @@ class Parser
     options = OpenStruct.new
     options.watch = false
     options.max_procs = 4
-    options.oggargs = []
+    options.oggargs = ['-Q']
 
     op = OptionParser.new do |opts|
       opts.banner = "Usage: autogg.rb [options] flacpath oggpath [ -o oggenc args ... ]\n" +
@@ -34,7 +35,8 @@ class Parser
 
       opts.on( '-o', '--oggenc-args arglist', Array,
                "Specify arguments to me be passed through to oggenc" ) do |ary|
-        options.oggargs = ary
+        options.oggargs << ary
+        options.oggargs.flatten!
       end
 
       opts.on( '-h', '--help', 'Display this screen' ) do
@@ -93,23 +95,35 @@ class OggEncoder
     def oggencdir
       Find.find( @paths.flac ) do |path|
         if FileTest.directory?( path )
-          Find.prune if File.basename( path )[0] == ?.
+          if File.basename( path )[0] == ?.
+            Find.prune
+          else
+            #@pbar.inc
+          end
         elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
           encfile( path )
+          @pbar.inc
         end
       end
+      Process.waitall
     end
 
     def encfile( inpath )
       outpath = getoutpath( inpath )
       @ps_hash.store( nil, outpath ) do
-        IO.popen %Q{oggenc #{@oggargs.join} "#{inpath}" -o "#{outpath}"}
+        IO.popen %Q{oggenc #{@oggargs.join(' ')} "#{inpath}" -o "#{outpath}"}
       end
     end
 
     def getoutpath( inpath )
       outpath = inpath.gsub( @paths.flac, @paths.ogg )
       outpath.gsub!( /\.flac/, '.ogg' )
+    end
+
+    def count_flacs
+      counter = 0
+      Find.find( @paths.flac ) {|p| counter += 1 if Flac.exists?( p ) }
+      counter
     end
 
     def interupt
@@ -137,7 +151,8 @@ class OggEncoder
       @paths = options.paths
       @oggargs = options.oggargs
       @ps_hash = SizedPsHash.new( options.max_procs )
-      oggencdir ; Process.waitall
+      @pbar = ProgressBar.new( "Subdirectory progress", count_flacs )
+      oggencdir ; @pbar.finish
       watcher if options.watch
     end
   end
