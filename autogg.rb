@@ -62,13 +62,13 @@ end
 
 class Flac < File
   def self.exists?( path )
-    file?( path ) and basename( path ) =~ /\.flac/
+    file?( path ) and basename( path ) =~ /\.flac$/
   end
 end
 
 class Ogg < File
   def self.exists?( path )
-    file?( path ) and basename( path ) =~ /\.ogg/
+    file?( path ) and basename( path ) =~ /\.ogg$/
   end
 end
 
@@ -121,9 +121,15 @@ class OggEncoder
     end
 
     def count_flacs
-      counter = 0
-      Find.find( @paths.flac ) {|p| counter += 1 if Flac.exists?( p ) }
-      counter
+      c = 0
+      Find.find( @paths.flac ) {|p| c += 1 if Flac.exists?( p ) }
+      c
+    end
+
+    def count_oggs
+      c = 0
+      Find.find( @paths.ogg ) {|p| c += 1 if Ogg.exists?( p ) }
+      c
     end
 
     def interupt
@@ -151,7 +157,7 @@ class OggEncoder
       @paths = options.paths
       @oggargs = options.oggargs
       @ps_hash = SizedPsHash.new( options.max_procs )
-      @pbar = ProgressBar.new( "Subdirectory progress", count_flacs )
+      @pbar = ProgressBar.new( "Subdirectory progress", ( count_flacs - count_oggs ) )
       oggencdir ; @pbar.finish
       watcher if options.watch
     end
