@@ -102,10 +102,9 @@ class OggEncoder
           end
         elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
           encfile( path )
-          @pbar.inc
         end
       end
-      Process.waitall
+      Process.waitall ; @ps_hash = {}
     end
 
     def encfile( inpath )
@@ -113,6 +112,9 @@ class OggEncoder
       @ps_hash.store( nil, outpath ) do
         IO.popen %Q{oggenc #{@oggargs.join(' ')} "#{inpath}" -o "#{outpath}"}
       end
+      @pbar.inc
+      rescue Exception => e
+        puts e
     end
 
     def getoutpath( inpath )
