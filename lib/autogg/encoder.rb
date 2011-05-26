@@ -26,8 +26,6 @@ module OggEncode
           IO.popen %Q{oggenc #{@oggargs.join(' ')} "#{inpath}" -o "#{outpath}"}
         end
         @pbar.inc
-        rescue Exception => e
-          puts e
       end
 
       def getoutpath( inpath )
