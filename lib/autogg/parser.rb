@@ -1,5 +1,5 @@
-require_relative 'optparse'
-require_relative 'ostruct'
+require 'optparse'
+require 'ostruct'
 
 module OggEncode
   class Parser
