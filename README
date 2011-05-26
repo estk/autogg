@@ -1,0 +1,1 @@
+Encodes all flacs in flacdir to ogg (recursively) while preserving directory structure, and outputing to oggdir.
