@@ -3,7 +3,8 @@ spec = Gem::Specification.new do |s|
   s.summary  = 'converts a folder of flacs to ogg, preserving directory structure'
   s.description = File.read(File.join(File.dirname(__FILE__), 'README'))
   s.requirements << 'oggenc must be installed on the base system'
-  s.version  = "0.2.0"
+  s.add_dependency 'rb-inotify', '>= 0.8.4'
+  s.version  = "0.2.1"
   s.author   = 'Evan Simmons'
   s.email    = 'esims89@gmail.com'
   s.homepage = 'https://github.com/estk/autogg'
