@@ -1,1 +1,1 @@
-Encodes all flacs in flacdir to ogg (recursively) while preserving directory structure, and outputing to oggdir.
+Encodes all flac files in a given directory to ogg in another given directory while preserving the directory structure. Also if rb-inotify is installed and -w flag is passed, it will watch for changes on the filesystem and rescan the directory, encoding the new files.
