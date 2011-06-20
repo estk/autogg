@@ -1,4 +1,5 @@
 require 'find'
+require 'rb-inotify'
 require_relative 'progressbar'
 
 module OggEncode
@@ -13,8 +14,6 @@ module OggEncode
             Find.prune if File.basename( path )[0] == ?.
           elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
             encfile( path )
-          else
-            #puts "checked  #{path}"
           end
         end
         Process.waitall ; @ps_hash = {} ; @pbar.finish
@@ -54,7 +53,6 @@ module OggEncode
       end
 
       def watcher
-        require 'rb-inotify'
         notifier = INotify::Notifier.new
         notifier.watch( @paths.flac, :create, :recursive ) do |e|
           puts %Q{#{Time.now.ctime}:  #{e.name} was modified, rescaning...}
