@@ -1,5 +1,4 @@
 require 'find'
-require 'rb-inotify'
 require_relative 'progressbar'
 
 module OggEncode
@@ -8,7 +7,6 @@ module OggEncode
 
       def oggencdir
         @pbar = ProgressBar.new( "Progress", ( count_flacs - count_oggs ) )
-        @watching = false
         Find.find( @paths.flac ) do |path|
           if FileTest.directory?( path )
             Find.prune if File.basename( path )[0] == ?.
@@ -45,25 +43,12 @@ module OggEncode
       end
 
       def interupt
-        puts "\n" + "Shutting down and removing partially encoded files" unless @watching
+        puts "\n" + "Shutting down and removing partially encoded files"
         @ps_hash.each do |pid, path|
           File.delete( path )
         end
         exit
       end
-
-      def watcher
-        notifier = INotify::Notifier.new
-        notifier.watch( @paths.flac, :create, :recursive ) do |e|
-          puts %Q{#{Time.now.ctime}:  #{e.name} was modified, rescaning...}
-          sleep 60
-          oggencdir ; @watching = true ; puts "watching #{@paths.flac}"
-        end
-        @watching = true
-        puts "watching #{@paths.flac}"
-        notifier.run
-      end
-
 
       def encode( options )
         @options = options
@@ -71,7 +56,6 @@ module OggEncode
         @oggargs = options.oggargs
         @ps_hash = SizedPsHash.new( options.max_procs )
         oggencdir
-        watcher if options.watch
       end
     end
 
