@@ -10,3 +10,7 @@ module OggEncode
     end
   end
 end
+
+if $0 == __FILE__
+  OggEncode::Runner.run(ARGV)
+end
