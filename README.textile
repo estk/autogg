@@ -1,0 +1,11 @@
+h1. Autogg
+
+h2. Summary
+
+Encodes all flac files in a given directory to ogg in another given directory while preserving the directory structure.
+
+h2. Adding as a cronjob
+
+bc. $ echo 'autogg /media/tb/rt/wt/ /media/tb/ogg/ -o -q8' | crontab -
+
+_keep in mind this replaces the current crontab_
