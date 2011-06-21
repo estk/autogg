@@ -8,6 +8,6 @@ h2. Adding as a cronjob
 
 *Example:*
 
-bc. $ echo 'autogg /media/tb/rt/wt/ /media/tb/ogg/ -o -q8' | crontab -
+bc. $ echo '@hourly ID=autogg autogg /media/tb/rt/wt/ /media/tb/ogg/ -o -q8' | crontab -
 
 _keep in mind this replaces the current crontab_
