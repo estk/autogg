@@ -27,4 +27,15 @@ module OggEncode
       super( ps.pid, path )
     end
   end
+
+  class Logger
+
+    def initialize(location)
+      #open file for logging
+    end
+
+    def push(pushed)
+      # append a new line to bottom of logfile with the contents of pushed 
+    end
+  end
 end

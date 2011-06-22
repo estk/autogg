@@ -12,6 +12,8 @@ module OggEncode
             Find.prune if File.basename( path )[0] == ?.
           elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
             encfile( path )
+          else
+            @log << [ File.basename(path), path ]
           end
         end
         Process.waitall ; @ps_hash = {} ; @pbar.finish
@@ -55,6 +57,7 @@ module OggEncode
         @paths = options.paths
         @oggargs = options.oggargs
         @ps_hash = SizedPsHash.new( options.max_procs )
+        @log = Logger.new(@paths.ogg)
         oggencdir
       end
     end
