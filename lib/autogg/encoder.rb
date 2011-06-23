@@ -59,6 +59,8 @@ module OggEncode
         @ps_hash = SizedPsHash.new( options.max_procs )
         @log = Logger.new(@paths.ogg)
         oggencdir
+      ensure
+        @log.close
       end
     end
 

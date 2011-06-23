@@ -31,11 +31,15 @@ module OggEncode
   class Logger
 
     def initialize(location)
-      #open file for logging
+      @log = File.new("#{location}log.txt", "w+")
     end
 
     def push(pushed)
-      # append a new line to bottom of logfile with the contents of pushed 
+      @log.puts %(pushed[0] pushed[1])
+    end
+
+    def close
+      @log.close
     end
   end
 end
