@@ -1,4 +1,5 @@
 module OggEncode
+  
   class Flac < File
     def self.exists?( path )
       file?( path ) and basename( path ) =~ /\.flac$/
@@ -31,7 +32,7 @@ module OggEncode
   class Logger
 
     def initialize(location)
-      @log = File.new("#{location}log.txt", "w+")
+      @log = File.new("#{location}autogg.log", "w+")
     end
 
     def <<(pushed)

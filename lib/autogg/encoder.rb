@@ -7,7 +7,7 @@ module OggEncode
 
       def oggencdir
         @pbar = ProgressBar.new( "Progress", ( count_flacs - count_oggs ) )
-        Find.find( @paths.flac ) do |path|
+        Find.find( @options.paths.flac ) do |path|
           if FileTest.directory?( path )
             Find.prune if File.basename( path )[0] == ?.
           elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
@@ -22,25 +22,25 @@ module OggEncode
       def encfile( inpath )
         outpath = getoutpath( inpath )
         @ps_hash.store( nil, outpath ) do
-          ps = IO.popen %Q{oggenc #{@oggargs.join(' ')} "#{inpath}" -o "#{outpath}"}
+          ps = IO.popen %Q{oggenc #{@options.oggargs.join(' ')} "#{inpath}" -o "#{outpath}"}
         end
         @pbar.inc
       end
 
       def getoutpath( inpath )
-        outpath = inpath.gsub( @paths.flac, @paths.ogg )
+        outpath = inpath.gsub( @options.paths.flac, @options.paths.ogg )
         outpath.gsub!( /\.flac/, '.ogg' )
       end
 
       def count_flacs
         c = 0
-        Find.find( @paths.flac ) {|p| c += 1 if Flac.exists?( p ) }
+        Find.find( @options.paths.flac ) {|p| c += 1 if Flac.exists?( p ) }
         c
       end
 
       def count_oggs
         c = 0
-        Find.find( @paths.ogg ) {|p| c += 1 if Ogg.exists?( p ) }
+        Find.find( @options.paths.ogg ) {|p| c += 1 if Ogg.exists?( p ) }
         c
       end
 
@@ -54,10 +54,8 @@ module OggEncode
 
       def encode( options )
         @options = options
-        @paths = options.paths
-        @oggargs = options.oggargs
         @ps_hash = SizedPsHash.new( options.max_procs )
-        @log = Logger.new(@paths.ogg)
+        @log = Logger.new(@options.paths.ogg)
         oggencdir
       ensure
         @log.close
