@@ -1,3 +1,4 @@
+require 'fileutils'
 module OggEncode
   
   class Flac < File
@@ -31,12 +32,27 @@ module OggEncode
 
   class Logger
 
-    def initialize(location)
-      @log = File.new("#{location}autogg.log", "w+")
+    def parent(path)
+      n = 0
+      result = ""
+      path.reverse.each_char do |c|
+        n += 1 if c == '/'
+        if n == 1
+          result << c
+        elsif n >= 2
+          break
+        end
+      end
+      return result.reverse
     end
 
-    def <<(pushed)
-      @log.puts "#{pushed[0]} -- #{pushed[1]}"
+    def initialize(location)
+      @log = File.new("#{location}autogg.log", "w+")
+      @log.puts "This is the log for the most recently run autogg \n\n"
+    end
+
+    def <<(path)
+      @log.puts "#{parent(path)} -- #{File.basename(path)} -- #{path}\n\n"
     end
 
     def close

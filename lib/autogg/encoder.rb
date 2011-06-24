@@ -13,7 +13,7 @@ module OggEncode
           elsif Flac.exists?( path ) and not Ogg.exists?( getoutpath(path) )
             encfile( path )
           else
-            @log << [ File.basename(path), path ]
+            @log << path
           end
         end
         Process.waitall ; @ps_hash = {} ; @pbar.finish
