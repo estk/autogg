@@ -48,11 +48,11 @@ module OggEncode
 
     def initialize(location)
       @log = File.new("#{location}autogg.log", "w+")
-      @log.puts "This is the log for the most recently run autogg \n\n"
+      @log.puts "This is the log of excluded files for the most recently run autogg \n\n"
     end
 
     def <<(path)
-      @log.puts "#{parent(path)} -- #{File.basename(path)} -- #{path}\n\n"
+      @log.puts "#{parent(path)} -- #{File.basename(path)}"
     end
 
     def close

@@ -2,7 +2,7 @@ spec = Gem::Specification.new do |s|
   s.name     = 'autogg'
   s.summary  = 'converts a folder of flacs to ogg, preserving directory structure'
   s.requirements << 'oggenc must be installed on the base system'
-  s.version  = "0.2.4"
+  s.version  = "0.2.5"
   s.author   = 'Evan Simmons'
   s.email    = 'esims89@gmail.com'
   s.homepage = 'https://github.com/estk/autogg'

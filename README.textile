@@ -4,10 +4,29 @@ h2. Summary
 
 Encodes all flac files in a given directory to ogg in another given directory while preserving the directory structure.
 
+h2. Installation
+
+bc. $ gem install autogg
+
+h2. Usage
+
+bc. man autogg
+
+h2. Logfile utilization
+
+The top of each autogg.log (in oggpath) should read:
+"This is the log of excluded files for the most recently run autogg".
+
+Each line follows the pattern:
+@"#{parent(path)} -- #{File.basename(path)}"@
+
+For optimal viewing pleasure, I recommend doing:
+@$ cat autogg.log | sort | less@
+
 h2. Adding as a cronjob
 
 *Example:*
 
 bc. $ echo '@hourly ID=autogg autogg /media/tb/rt/wt/ /media/tb/ogg/ -o -q8' | crontab -
 
-_keep in mind this replaces the current crontab_
+_keep in mind this replaces your current crontab_
