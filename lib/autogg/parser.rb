@@ -6,7 +6,7 @@ module OggEncode
     class << self
 
       def make_path(folder)
-        folder # TODO
+        folder =~ /\/$/ ? folder : folder + '/'
       end
 
       def parse(args)
