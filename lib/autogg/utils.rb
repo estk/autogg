@@ -34,8 +34,8 @@ module OggEncode
       @log = File.new("#{location}log.txt", "w+")
     end
 
-    def push(pushed)
-      @log.puts %(pushed[0] pushed[1])
+    def <<(pushed)
+      @log.puts "#{pushed[0]} -- #{pushed[1]}"
     end
 
     def close
